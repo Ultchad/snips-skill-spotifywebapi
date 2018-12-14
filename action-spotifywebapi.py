@@ -162,8 +162,7 @@ def _normalize_text(text):
     :return: unicode text without accent
     """
     if isinstance(text, str):
-        text = unicode(text)
-        #return text
+        text = u'{}'.format(text)
     return unicodedata.normalize('NFD', text).encode('ascii', 'ignore')
 
 
@@ -467,14 +466,14 @@ def modeEnable(hermes, intentMessage):
                 # state - track, context, or off
                 # Get current playback to see the actual repeat state
                 c = _sp_client.current_playback()
-                if c['repeat_state'] == 'off'
+                if c['repeat_state'] == 'off':
                     state = 'context'
-                elif c['repeat_state'] == 'context'
+                elif c['repeat_state'] == 'context':
                     state = 'track'
                 else:
                     state = 'context'
                     
-                _sp_client.repeat(state='track')
+                _sp_client.repeat(state=state)
                 print('repeatEnable')
             except spotipy.client.SpotifyException as e:
                 _exception_spotify(e, 'repeatEnable')            
@@ -590,6 +589,6 @@ if __name__ == "__main__":
             .subscribe_intent('Tealque:playPlaylist', playPlaylist)\
             .subscribe_intent('getInfos', getInfos)\
             .subscribe_intent('addSong', addSong)\
-            .subscribe_intent('Tealque:modeEnable', shuffleEnable)\
-            .subscribe_intent('Tealque:modeDisable', shuffleDisable)\
+            .subscribe_intent('Tealque:modeEnable', modeEnable)\
+            .subscribe_intent('Tealque:modeDisable', modeDisable)\
             .loop_forever()
