@@ -476,7 +476,7 @@ def modeEnable(hermes, intentMessage):
                     state = 'context'
                     
                 _sp_client.repeat(state=state)
-                print('repeatEnable')
+                print('repeatEnable with state: {} (old state: {})'.format(state, c['repeat_state']))
             except spotipy.client.SpotifyException as e:
                 _exception_spotify(e, 'repeatEnable')            
         else:
@@ -503,7 +503,7 @@ def modeDisable(hermes, intentMessage):
         if mode == 'shuffle':
             try:
                 _sp_client.shuffle(state=False)
-                print('shuffleEnable')
+                print('shuffleDisable')
             except spotipy.client.SpotifyException as e:
                 _exception_spotify(e, 'shuffleEnable')
         # Mode Repeat
@@ -511,7 +511,7 @@ def modeDisable(hermes, intentMessage):
             try:
                 # state - track, context, or off
                 _sp_client.repeat(state='off')
-                print('repeatEnable')
+                print('repeatDisable')
             except spotipy.client.SpotifyException as e:
                 _exception_spotify(e, 'repeatEnable')            
         else:
