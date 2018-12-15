@@ -18,7 +18,9 @@ MQTT_ADDR = "{}:{}".format(MQTT_IP_ADDR, str(MQTT_PORT))
 _sp_client = None
 _volume_add = 10
 
-EXCEPTION_MSG_DICT = {    
+EXCEPTION_MSG = None
+EXCEPTION_MSG_DICT = {
+
 }
 
 
@@ -56,14 +58,29 @@ def _exception_spotify(spotify_exception, action=None):
     else:
         print('[Exception error]{} No have translate for this msg error: {}'.format(action, msg))
         text = u"Une erreur c'est produite lors de cette action"
-    #return text
-    # hermes.publish_end_session(intentMessage.session_id, u"{}".format(text))
+    global EXCEPTION_MSG
+    EXCEPTION_MSG = text
+
+
+def _simple_end(hermes, intentMessage, text=''):
+    """
+    Send end of session to snips with text or error message
+    :param hermes: message manager of snips
+    :param intentMessage: intent message incoming from snips broker
+    :param text: text say by snips default it's error msg and if not: nothing
+    :return: None
+    """
+    global EXCEPTION_MSG
+    if EXCEPTION_MSG:
+        text = EXCEPTION_MSG
+    hermes.publish_end_session(intentMessage.session_id, text)
+    EXCEPTION_MSG = None
 
 
 def _get_cached_token(username, client_id, client_secret,
-                      redirect_uri="http://localhost", scope='', cache_path=None):
+                      redirect_uri="http://localhost/", scope='', cache_path=None):
     """
-
+    Return the token from cache file
     :param username: username of the premium spotify account
     :param client_id: client_id of the spotify app
     :param client_secret: client_secret of the spotify app
@@ -95,7 +112,6 @@ def _get_current_volume():
             return r['device']['volume_percent']
     except spotipy.client.SpotifyException as e:
         _exception_spotify(e, '_get_current_volume')
-        return None
 
 
 def _set_volume(volume_percent):
@@ -115,7 +131,7 @@ def _set_volume(volume_percent):
     try:
         _sp_client.volume(volume_percent)
     except spotipy.client.SpotifyException as e:
-        return _exception_spotify(e, '_set_volume')
+        _exception_spotify(e, '_set_volume')
 
 
 def _search_first(query, type_search='track'):
@@ -148,8 +164,7 @@ def _normalize_text(text):
     :return: unicode text without accent
     """
     if isinstance(text, str):
-        text = unicode(text)
-        #return text
+        text = u'{}'.format(text)
     return unicodedata.normalize('NFD', text).encode('ascii', 'ignore')
 
 
@@ -175,7 +190,7 @@ def volumeUp(hermes, intentMessage):
         _set_volume(v + v_add)
     else:
         print('No playback')
-    hermes.publish_end_session(intentMessage.session_id, u"")
+    _simple_end(hermes, intentMessage)
 
 
 def volumeDown(hermes, intentMessage):
@@ -194,7 +209,7 @@ def volumeDown(hermes, intentMessage):
         _set_volume(v - v_add)
     else:
         print('No playback')
-    hermes.publish_end_session(intentMessage.session_id, u"")
+    _simple_end(hermes, intentMessage)
 
 
 def volumeSet(hermes, intentMessage):
@@ -209,7 +224,7 @@ def volumeSet(hermes, intentMessage):
         _set_volume(v)
     else:
         print('No slots volume found')
-    hermes.publish_end_session(intentMessage.session_id, u"")
+    _simple_end(hermes, intentMessage)
 
 
 # Manage playback
@@ -221,7 +236,7 @@ def previousSong(hermes, intentMessage):
     :return: void
     """
     _sp_client.previous_track()
-    hermes.publish_end_session(intentMessage.session_id, u"")
+    _simple_end(hermes, intentMessage)
 
 
 def nextSong(hermes, intentMessage):
@@ -232,7 +247,7 @@ def nextSong(hermes, intentMessage):
     :return: void
     """
     _sp_client.next_track()
-    hermes.publish_end_session(intentMessage.session_id, u"")
+    _simple_end(hermes, intentMessage)
 
 
 def resumeMusic(hermes, intentMessage):
@@ -244,19 +259,9 @@ def resumeMusic(hermes, intentMessage):
     """
     try:
         _sp_client.start_playback()
-    except spotipy.client.SpotifyException as e:
-        # print('Error on speakerInterrupt')
-        # hermes.publish_end_session(intentMessage.session_id, 
-        #         u"Je ne peux pas démarrer la musique elle l'est déjà ou il n'y a pas d'equipement connécté")
+    except spotipy.client.SpotifyException as e:        
         _exception_spotify(e, 'resumeMusic')
-    hermes.publish_end_session(intentMessage.session_id, u"")
-        
-    # if not _sp_client.currently_playing():
-    #     _sp_client.start_playback()
-    # else:
-    #     print("Can't start music, is already start")
-    #     hermes.publish_end_session(intentMessage.session_id, 
-    #         "Je ne peux pas lancer la musique elle l'est déjà")
+    _simple_end(hermes, intentMessage)
 
 
 def speakerInterrupt(hermes, intentMessage):
@@ -268,19 +273,9 @@ def speakerInterrupt(hermes, intentMessage):
     """
     try:
         _sp_client.pause_playback()
-    except spotipy.client.SpotifyException as e:
-        # print('Error on speakerInterrupt')
-        # hermes.publish_end_session(intentMessage.session_id, 
-        #         u"Je ne peux pas arrêter la musique elle l'est déjà ou il n'y a pas d'equipement connécté")
+    except spotipy.client.SpotifyException as e:        
         _exception_spotify(e, 'speakerInterrupt')
-    hermes.publish_end_session(intentMessage.session_id, u"")
-
-    # if _sp_client.currently_playing():
-    #     _sp_client.pause_playback()
-    # else:
-    #     print("Can't stop music, is already stop")
-    #     hermes.publish_end_session(intentMessage.session_id, 
-    #         "Je ne peux pas arrêter la musique elle l'est déjà")
+    _simple_end(hermes, intentMessage)
 
 
 # Play
@@ -303,8 +298,10 @@ def playAlbum(hermes, intentMessage):
                 hermes.publish_end_session(intentMessage.session_id, u"Je met l'album: {}".format(album_name))
             except spotipy.client.SpotifyException as e:
                 _exception_spotify(e, 'playAlbum')
+                _simple_end(hermes, intentMessage)
     else:
         print('No slots album found')
+        _simple_end(hermes, intentMessage, text=u"Je ne sais pas quelle album jouer")
 
 
 def playArtist(hermes, intentMessage):
@@ -320,9 +317,10 @@ def playArtist(hermes, intentMessage):
                 hermes.publish_end_session(intentMessage.session_id, u"Je met l'artiste: {}".format(artist_name))
             except spotipy.client.SpotifyException as e:
                 _exception_spotify(e, 'playArtist')
+                _simple_end(hermes, intentMessage)
     else:
         print('No slots artist found')
-        hermes.publish_end_session(intentMessage.session_id, u"")
+        _simple_end(hermes, intentMessage)
 
 
 def playSong(hermes, intentMessage):
@@ -344,11 +342,12 @@ def playSong(hermes, intentMessage):
                 hermes.publish_end_session(intentMessage.session_id, u"Je met la musique: {}".format(song_name))
             except spotipy.client.SpotifyException as e:
                 _exception_spotify(e, 'playSong')
-            
+                _simple_end(hermes, intentMessage)            
     else:
-        print('No slots song found')
-        hermes.publish_end_session(intentMessage.session_id, u"")
-    
+        print('No slots song found')  
+        _simple_end(hermes, intentMessage, text=u"Je ne sais pas quelle musique jouer")
+
+
 # TODO crate a list with playlist find and ask to user
 def playPlaylist(hermes, intentMessage):
     """
@@ -356,33 +355,46 @@ def playPlaylist(hermes, intentMessage):
     :param hermes: message manager of snips
     :param intentMessage: intent message incoming from snips broker
     :return: void
-    """
+    """    
     # Snips part
     if intentMessage.slots.playlist:
         playlist_name = intentMessage.slots.playlist[0].slot_value.value.value
         
-        pattern = '.*?{}.*?'.format(_normalize_text(playlist_name).replace(' ', '[ -_]+'))
+        pattern = '.*?{}.*?'.format(_normalize_text(playlist_name).replace(' ', '[ -_]*?'))
         print('Search playlist pattern: {}'.format(pattern))
 
         regex = re.compile(pattern, flags=re.IGNORECASE)
         
+        playlist_match = []
         results = _sp_client.current_user_playlists()
+        
         for item in results['items']:
             if regex.search(_normalize_text(item['name'])):
-                print(u'Find playlist: {}'.format(item['name']))
-                uri = item['uri']
-                try:
-                    _sp_client.start_playback(context_uri=uri, uris=None)
-                except spotipy.client.SpotifyException as e:
-                    _exception_spotify(e, 'playPlaylist')
-                return
-        print('Playlist not find')
-        text = u"Je n'ai pas trouver la playlist: {}".format(playlist_name)
-        hermes.publish_end_session(intentMessage.session_id, text)
+                print(u'Add playlist to playlist_match: {}'.format(item['name']))
+                playlist_match.append(item)
+                
+        playlist_match_name = [item['name'] for item in playlist_match]
+        print('playlist_match: {}'.format(playlist_match_name))
+        len_playlist_match = len(playlist_match)
+        if len_playlist_match > 0:
+            print(u'Play the first playlist: {}'.format(playlist_match[0]['name']))
+            uri = playlist_match[0]['uri']
+            try:
+                _sp_client.start_playback(context_uri=uri, uris=None)
+            except spotipy.client.SpotifyException as e:
+                _exception_spotify(e, 'playPlaylist')
+            # Try to ask to user > for the next version
+            # text = u"J'ai trouvé {} playlist correspondante dit moi la quel vous souhaitez: {}".format(
+            #                     len_playlist_match, ', '.join(playlist_match_name))
+            # hermes.publish_continue_session(intentMessage.session_id, text, ['Tealque:playPlaylist'])
+        else:
+            print('Playlist not find')
+            text = u"Je n'ai pas trouver de playlist correspondant à: {}".format(playlist_name)
+            hermes.publish_end_session(intentMessage.session_id, text)
     else:
         print('No slots playlist found')
-        hermes.publish_end_session(intentMessage.session_id, u"")
-    
+        _simple_end(hermes, intentMessage, text=u"Je ne sais pas quelle playlist jouer")
+
 
 # Info
 def getInfos(hermes, intentMessage):
@@ -433,63 +445,82 @@ def addSong(hermes, intentMessage):
 
 
 # Function
-def shuffleEnable(hermes, intentMessage):
+def modeEnable(hermes, intentMessage):
     """
-
+    Enable shuffle or repeapt mode
     :param hermes: message manager of snips
     :param intentMessage: intent message incoming from snips broker
     :return: void
     """
-    try:
-        _sp_client.shuffle(state=True)
-        print('shuffleEnable')
-    except spotipy.client.SpotifyException as e:
-        _exception_spotify(e, 'shuffleEnable')
-    hermes.publish_end_session(intentMessage.session_id, u"")
+    if intentMessage.slots.mode:
+        mode = intentMessage.slots.mode[0].slot_value.value.value
+        
+        # Mode Shuffle        
+        if mode == 'shuffle':
+            try:
+                _sp_client.shuffle(state=True)
+                print('shuffleEnable')
+            except spotipy.client.SpotifyException as e:
+                _exception_spotify(e, 'shuffleEnable')
+        # Mode Repeat
+        elif mode == 'repeat':
+            try:
+                # state - track, context, or off
+                # Get current playback to see the actual repeat state
+                c = _sp_client.current_playback()
+                if c['repeat_state'] == 'off':
+                    state = 'context'
+                elif c['repeat_state'] == 'context':
+                    state = 'track'
+                else:
+                    state = 'context'
+                    
+                _sp_client.repeat(state=state)
+                print('repeatEnable with state: {} (old state: {})'.format(state, c['repeat_state']))
+            except spotipy.client.SpotifyException as e:
+                _exception_spotify(e, 'repeatEnable')            
+        else:
+            print('Unknown mode: {}'.format(mode))
+        
+        _simple_end(hermes, intentMessage)
+    else:
+        print('No slots mode found')
+        _simple_end(hermes, intentMessage, text=u"Je ne sais pas quel mode activer")
 
 
-def shuffleDisable(hermes, intentMessage):
+def modeDisable(hermes, intentMessage):
     """
-
+    Disable shuffle or repeapt mode
     :param hermes: message manager of snips
     :param intentMessage: intent message incoming from snips broker
     :return: void
     """
-    try:
-        _sp_client.shuffle(state=False)
-        print('shuffleDisable')
-    except spotipy.client.SpotifyException as e:
-        _exception_spotify(e, 'shuffleDisable')
-    hermes.publish_end_session(intentMessage.session_id, u"")
 
-def repeatEnable(hermes, intentMessage):
-    """
-
-    :param hermes: message manager of snips
-    :param intentMessage: intent message incoming from snips broker
-    :return: void
-    """
-    try:
-        _sp_client.repeat(state=True)
-        print('repeatEnable')
-    except spotipy.client.SpotifyException as e:
-        _exception_spotify(e, 'repeatEnable')
-    hermes.publish_end_session(intentMessage.session_id, u"")
-
-
-def repeatDisable(hermes, intentMessage):
-    """
-
-    :param hermes: message manager of snips
-    :param intentMessage: intent message incoming from snips broker
-    :return: void
-    """
-    try:
-        _sp_client.repeat(state=False)
-        print('repeatDisable')
-    except spotipy.client.SpotifyException as e:
-        _exception_spotify(e, 'repeatDisable')
-    hermes.publish_end_session(intentMessage.session_id, u"")
+    if intentMessage.slots.mode:
+        mode = intentMessage.slots.mode[0].slot_value.value.value
+        
+        # Mode Shuffle
+        if mode == 'shuffle':
+            try:
+                _sp_client.shuffle(state=False)
+                print('shuffleDisable')
+            except spotipy.client.SpotifyException as e:
+                _exception_spotify(e, 'shuffleEnable')
+        # Mode Repeat
+        elif mode == 'repeat':
+            try:
+                # state - track, context, or off
+                _sp_client.repeat(state='off')
+                print('repeatDisable')
+            except spotipy.client.SpotifyException as e:
+                _exception_spotify(e, 'repeatEnable')            
+        else:
+            print('Unknown mode: {}'.format(mode))
+        
+        _simple_end(hermes, intentMessage)
+    else:
+        print('No slots mode found')
+        _simple_end(hermes, intentMessage, text=u"Je ne sais pas quel mode activer")
 
 
 if __name__ == "__main__":
@@ -554,14 +585,12 @@ if __name__ == "__main__":
             .subscribe_intent('nextSong', nextSong)\
             .subscribe_intent('resumeMusic', resumeMusic)\
             .subscribe_intent('speakerInterrupt', speakerInterrupt)\
-            .subscribe_intent('playAlbum', playAlbum)\
+            .subscribe_intent('Tealque:playAlbum', playAlbum)\
             .subscribe_intent('Tealque:playArtist', playArtist)\
-            .subscribe_intent('playSong', playSong)\
+            .subscribe_intent('Tealque:playSong', playSong)\
             .subscribe_intent('Tealque:playPlaylist', playPlaylist)\
             .subscribe_intent('getInfos', getInfos)\
             .subscribe_intent('addSong', addSong)\
-            .subscribe_intent('Tealque:shuffleEnable', shuffleEnable)\
-            .subscribe_intent('Tealque:shuffleDisable', shuffleDisable)\
-            .subscribe_intent('Tealque:repeatEnable', repeatEnable)\
-            .subscribe_intent('Tealque:repeatDisable', repeatDisable)\
+            .subscribe_intent('Tealque:modeEnable', modeEnable)\
+            .subscribe_intent('Tealque:modeDisable', modeDisable)\
             .loop_forever()
