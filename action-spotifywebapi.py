@@ -58,6 +58,7 @@ def _exception_spotify(spotify_exception, action=None):
     else:
         print('[Exception error]{} No have translate for this msg error: {}'.format(action, msg))
         text = u"Une erreur c'est produite lors de cette action"
+    global EXCEPTION_MSG
     EXCEPTION_MSG = text
 
 
@@ -69,6 +70,7 @@ def _simple_end(hermes, intentMessage, text=''):
     :param text: text say by snips default it's error msg and if not: nothing
     :return: None
     """
+    global EXCEPTION_MSG
     if EXCEPTION_MSG:
         text = EXCEPTION_MSG
     hermes.publish_end_session(intentMessage.session_id, text)
