@@ -72,6 +72,7 @@ if __name__ == "__main__":
     username = None
     client_id = None
     client_secret = None
+    redirect_uri = None
         
     config = read_configuration_file(args.config)
     if config.get("secret") is not None:        
