@@ -105,14 +105,15 @@ if __name__ == "__main__":
         exit(2)
         
     # Defined cache file
-    cache_path = '.cache-{}'.format(username.lower())
+    # cache_path = '.cache-{}'.format(username.lower())
+    username = username.lower()
     logger.debug('cache_path: {}'.format(cache_path))
     
     logger.info('Try to gen token with util.prompt_for_user_token')
     # Get the tocken
     token = util.prompt_for_user_token(username=username,
                                        client_id=client_id, client_secret=client_secret,
-                                       scope=scope, redirect_uri=redirect_uri, cache_path=cache_path)
+                                       scope=scope, redirect_uri=redirect_uri)
     logger.info('Token generation OK with util.prompt_for_user_token')
     
     logger.info('Try to use token get current_user')
