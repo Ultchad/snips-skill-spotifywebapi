@@ -105,7 +105,7 @@ if __name__ == "__main__":
         exit(2)
         
     # Defined cache file
-    # cache_path = '.cache-{}'.format(username.lower())
+    cache_path = '.cache-{}'.format(username.lower())
     username = username.lower()
     logger.debug('cache_path: {}'.format(cache_path))
     
