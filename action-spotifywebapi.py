@@ -20,7 +20,7 @@ _volume_add = 10
 
 EXCEPTION_MSG = None
 EXCEPTION_MSG_DICT = {
-
+    "Player command failed: No active device found": u"Une erreur c'est produite: Aucun équipement actif n'a été trouvé"
 }
 
 
@@ -53,6 +53,9 @@ def _exception_spotify(spotify_exception, action=None):
     action = '[{}]'.format(action) if action else ''
     print('[Exception error]{} Spotify error: {}'.format(action, spotify_exception))
     msg = spotify_exception.msg
+    if msg.find('\n') != -1:
+        msg = msg.split('\n')[1].strip()
+
     if msg in EXCEPTION_MSG_DICT:
         text = EXCEPTION_MSG_DICT[msg]
     else:
