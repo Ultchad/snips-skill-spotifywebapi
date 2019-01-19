@@ -8,6 +8,8 @@ import spotipy
 from spotipy import oauth2
 import re
 import unicodedata
+import importlib
+import json
 
 
 MQTT_IP_ADDR = "localhost"
@@ -18,10 +20,9 @@ MQTT_ADDR = "{}:{}".format(MQTT_IP_ADDR, str(MQTT_PORT))
 _sp_client = None
 _volume_add = 10
 
+
+i18n = None
 EXCEPTION_MSG = None
-EXCEPTION_MSG_DICT = {
-    "Player command failed: No active device found": u"Une erreur c'est produite: Aucun équipement actif n'a été trouvé"
-}
 
 
 # Snips function
@@ -56,11 +57,11 @@ def _exception_spotify(spotify_exception, action=None):
     if msg.find('\n') != -1:
         msg = msg.split('\n')[1].strip()
 
-    if msg in EXCEPTION_MSG_DICT:
-        text = EXCEPTION_MSG_DICT[msg]
+    if msg in i18n.EXCEPTION_MSG_DICT:
+        text = i18n.EXCEPTION_MSG_DICT[msg]
     else:
         print('[Exception error]{} No have translate for this msg error: {}'.format(action, msg))
-        text = u"Une erreur c'est produite lors de cette action"
+        text = i18n.DEFAULT_EXCEPTION
     global EXCEPTION_MSG
     EXCEPTION_MSG = text
 
@@ -298,13 +299,13 @@ def playAlbum(hermes, intentMessage):
         if uri:
             try:
                 _sp_client.start_playback(context_uri=uri, uris=None)
-                hermes.publish_end_session(intentMessage.session_id, u"Je met l'album: {}".format(album_name))
+                hermes.publish_end_session(intentMessage.session_id, i18n.PLAY_ALBUM.format(album_name))
             except spotipy.client.SpotifyException as e:
                 _exception_spotify(e, 'playAlbum')
                 _simple_end(hermes, intentMessage)
     else:
         print('No slots album found')
-        _simple_end(hermes, intentMessage, text=u"Je ne sais pas quelle album jouer")
+        _simple_end(hermes, intentMessage, text=i18n.NO_SLOT_ALBUM)
 
 
 def playArtist(hermes, intentMessage):
@@ -317,13 +318,13 @@ def playArtist(hermes, intentMessage):
         if uri:
             try:
                 _sp_client.start_playback(context_uri=uri, uris=None)
-                hermes.publish_end_session(intentMessage.session_id, u"Je met l'artiste: {}".format(artist_name))
+                hermes.publish_end_session(intentMessage.session_id, i18n.PLAY_ARTIST.format(artist_name))
             except spotipy.client.SpotifyException as e:
                 _exception_spotify(e, 'playArtist')
                 _simple_end(hermes, intentMessage)
     else:
         print('No slots artist found')
-        _simple_end(hermes, intentMessage)
+        _simple_end(hermes, intentMessage,  text=i18n.NO_SLOT_ARTIST)
 
 
 def playSong(hermes, intentMessage):
@@ -342,13 +343,13 @@ def playSong(hermes, intentMessage):
         if uri:
             try:
                 _sp_client.start_playback(context_uri=None, uris=[uri])
-                hermes.publish_end_session(intentMessage.session_id, u"Je met la musique: {}".format(song_name))
+                hermes.publish_end_session(intentMessage.session_id, i18n.PLAY_SONG.format(song_name))
             except spotipy.client.SpotifyException as e:
                 _exception_spotify(e, 'playSong')
                 _simple_end(hermes, intentMessage)            
     else:
         print('No slots song found')  
-        _simple_end(hermes, intentMessage, text=u"Je ne sais pas quelle musique jouer")
+        _simple_end(hermes, intentMessage, text=i18n.NO_SLOT_SONG)
 
 
 # TODO crate a list with playlist find and ask to user
@@ -392,11 +393,10 @@ def playPlaylist(hermes, intentMessage):
             # hermes.publish_continue_session(intentMessage.session_id, text, ['Tealque:playPlaylist'])
         else:
             print('Playlist not find')
-            text = u"Je n'ai pas trouver de playlist correspondant à: {}".format(playlist_name)
-            hermes.publish_end_session(intentMessage.session_id, text)
+            _simple_end(hermes, intentMessage, text=i18n.PLAYLIST_NOT_FOUND.format(playlist_name))
     else:
         print('No slots playlist found')
-        _simple_end(hermes, intentMessage, text=u"Je ne sais pas quelle playlist jouer")
+        _simple_end(hermes, intentMessage, text=i18n.NO_SLOT_PLAYLIST)
 
 
 # Info
@@ -421,12 +421,10 @@ def getInfos(hermes, intentMessage):
         else:
             artists_text = a
         print(u'artists_text: {}'.format(artists_text))
-        text = u"Vous écouté: {} interprété par {} de l'album {}".format(
-                    track, artists_text, album)
-        hermes.publish_end_session(intentMessage.session_id, text)        
+        _simple_end(hermes, intentMessage, text=i18n.GET_INFO.format(track, artists_text, album))
     else:
         print('No track currently playing')
-        hermes.publish_end_session(intentMessage.session_id, u"Il n'y a pas de musique en cours d'écoute")
+        _simple_end(hermes, intentMessage, text=i18n.NO_SONG_CURRENTLY_PLAYING)
 
 
 def addSong(hermes, intentMessage):
@@ -440,11 +438,9 @@ def addSong(hermes, intentMessage):
     if currently_playing:
         uri = currently_playing['item']['uri']
         _sp_client.current_user_saved_tracks_add([uri])
-        hermes.publish_end_session(intentMessage.session_id,
-                                   u"J'ai sauvegarder dans vos titre: {}".format(
-                                       currently_playing['item']['name']))
+        _simple_end(hermes, intentMessage, text=i18n.ADD_SONG.format(currently_playing['item']['name']))
     else:
-        hermes.publish_end_session(intentMessage.session_id, u"Aucune musique n'est en cours d'ecoute")
+        _simple_end(hermes, intentMessage, text=i18n.NO_SONG_CURRENTLY_PLAYING)
 
 
 # Function
@@ -488,7 +484,7 @@ def modeEnable(hermes, intentMessage):
         _simple_end(hermes, intentMessage)
     else:
         print('No slots mode found')
-        _simple_end(hermes, intentMessage, text=u"Je ne sais pas quel mode activer")
+        _simple_end(hermes, intentMessage, text=i18n.NO_SLOT_MODE)
 
 
 def modeDisable(hermes, intentMessage):
@@ -523,10 +519,16 @@ def modeDisable(hermes, intentMessage):
         _simple_end(hermes, intentMessage)
     else:
         print('No slots mode found')
-        _simple_end(hermes, intentMessage, text=u"Je ne sais pas quel mode activer")
+        _simple_end(hermes, intentMessage, text=i18n.NO_SLOT_MODE)
 
 
 if __name__ == "__main__":
+
+    # Use the assistant's language.
+    with open("/usr/share/snips/assistant/assistant.json") as json_file:
+        language = json.load(json_file)["language"]
+
+    i18n = importlib.import_module("translations." + language)
     
     # Defined default redirect uri
     redirect_uri = r'http://localhost/'
