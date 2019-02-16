@@ -86,7 +86,8 @@ if __name__ == "__main__":
     client_id = args.client_id if args.client_id else client_id
     client_secret = args.client_secret if args.client_secret else client_secret
     scope = args.scope if args.scope else scope
-    redirect_uri = args.redirect_uri  if args.redirect_uri else redirect_uri
+    # noinspection PyPep8
+    redirect_uri = args.redirect_uri if args.redirect_uri else redirect_uri
     
     logger.debug('username: {}'.format(username))
     logger.debug('client_id: {}, client_secret: {}'.format(client_id, client_secret))
