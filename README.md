@@ -37,7 +37,7 @@ Now you can enter on the App or on config.ini client_id, client_secret, redirect
 
 ### From the script on snips device
 
-- Go to the app dir (default: /var/lib/skills/snips-skill-spotifywebapi)
+- Go to the app dir (default: /var/lib/snips/skills/snips-skill-spotifywebapi/)
 - Run `setup.sh` (it will create a virtualenv, install the dependencies in it and rename config.ini.default to config.ini)
 - Generate token with ./token-generator.py
   - copy the URL on your browser
@@ -59,5 +59,5 @@ python token-generator.py
 - Normally  the script run automatically on your browser the URL to approve your app
 - When you redirect on your redirect_uri, copy the complete url and paste on script
   - the script generate the token on .cache-USERNAME copy this file on your app dir to your snips device 
-  (default: /var/lib/skills/snips-skill-spotifywebapi)
+  (default: /var/lib/snips/skills/snips-skill-spotifywebapi/)
 
