@@ -9,7 +9,7 @@ then
     then
         # If a Python 2 environment exists, delete it first
         # before creating a new Python 3 virtual environment.
-        rm -r $VENV
+        rm -rf $VENV
     fi
 
     test ! -d "$VENV" && $PYTHON -m venv $VENV
