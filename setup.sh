@@ -9,14 +9,18 @@ then
     then
         # If a Python 2 environment exists, delete it first
         # before creating a new Python 3 virtual environment.
+        echo "Python 2 venv detected, deleting..."
         rm -rf $VENV
     fi
 
-    test ! -d "$VENV" && $PYTHON -m venv $VENV
+    if [ ! -d "$VENV" ]
+    then
+        echo "Creating virtualenv..."
+        $PYTHON -m venv $VENV
+    fi
 
     # Activate the virtual environment and install requirements
-    . $VENV/bin/activate
-    pip install -r requirements.txt
+    $VENV/bin/pip install -r requirements.txt
 else
     >&2 echo "Cannot find Python 3. Please install it."
 fi
