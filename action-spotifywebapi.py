@@ -1,8 +1,6 @@
-#!/usr/bin/env python2
-# coding: utf-8
+#!/usr/bin/env python
 
-
-import ConfigParser
+import configparser
 from hermes_python.hermes import Hermes
 import spotipy
 from spotipy import oauth2
@@ -26,7 +24,7 @@ EXCEPTION_MSG = None
 
 
 # Snips function
-class SnipsConfigParser(ConfigParser.SafeConfigParser):
+class SnipsConfigParser(configparser.ConfigParser):
     def to_dict(self):
         return {section: {option_name: option
                           for option_name, option in self.items(section)} for section in self.sections()}
@@ -38,7 +36,7 @@ def read_configuration_file(configuration_file):
             conf_parser = SnipsConfigParser()
             conf_parser.readfp(f)
             return conf_parser.to_dict()
-    except (IOError, ConfigParser.Error) as e:
+    except (IOError, configparser.Error) as e:
         print('[Error] IOError: {}'.format(e))
         return dict()
 
@@ -94,11 +92,11 @@ def _get_cached_token(username, client_id, client_secret,
     :return: token
     """
     if not cache_path:
-        cache_path = '.cache-{}'.format(username.lower()) 
+        cache_path = '.cache-{}'.format(username.lower())
     sp_oauth = oauth2.SpotifyOAuth(client_id=client_id, client_secret=client_secret,
                                    redirect_uri=redirect_uri, scope=scope, cache_path=cache_path)
     token_info = sp_oauth.get_cached_token()
-    
+
     if token_info:
         return token_info['access_token']
     else:
@@ -129,7 +127,7 @@ def _set_volume(volume_percent):
         volume_percent = 100
     elif volume_percent < 0:
         volume_percent = 0
-    
+
     volume_percent = int(volume_percent)
     print('[_set_volume] set volume_percent: {}'.format(volume_percent))
     try:
@@ -151,7 +149,7 @@ def _search_first(query, type_search='track'):
     except spotipy.client.SpotifyException as e:
         _exception_spotify(e, '_search_first')
         return None
-    
+
     items = results['{}s'.format(type_search)]['items']
     if len(items) < 1:
         print('Search not items found for {}: {}'.format(type_search, query))
@@ -167,8 +165,9 @@ def _normalize_text(text):
     :param text: unicode text
     :return: unicode text without accent
     """
-    if isinstance(text, str):
-        text = u'{}'.format(text)
+    # FIXME Still necessary?
+    if isinstance(text, bytes):
+        text = text.decode('utf8')
     return unicodedata.normalize('NFD', text).encode('ascii', 'ignore')
 
 
@@ -263,7 +262,7 @@ def resumeMusic(hermes, intentMessage):
     """
     try:
         _sp_client.start_playback()
-    except spotipy.client.SpotifyException as e:        
+    except spotipy.client.SpotifyException as e:
         _exception_spotify(e, 'resumeMusic')
     _simple_end(hermes, intentMessage)
 
@@ -277,7 +276,7 @@ def speakerInterrupt(hermes, intentMessage):
     """
     try:
         _sp_client.pause_playback()
-    except spotipy.client.SpotifyException as e:        
+    except spotipy.client.SpotifyException as e:
         _exception_spotify(e, 'speakerInterrupt')
     _simple_end(hermes, intentMessage)
 
@@ -293,7 +292,7 @@ def playAlbum(hermes, intentMessage):
     # Snips part
     if intentMessage.slots.album:
         album_name = intentMessage.slots.album[0].slot_value.value.value
-        
+
         # Spotify part
         uri = _search_first(album_name, 'album')
         if uri:
@@ -312,7 +311,7 @@ def playArtist(hermes, intentMessage):
     # Snips part
     if intentMessage.slots.artist:
         artist_name = intentMessage.slots.artist[0].slot_value.value.value
-        
+
         # Spotify part
         uri = _search_first(artist_name, 'artist')
         if uri:
@@ -337,7 +336,7 @@ def playSong(hermes, intentMessage):
     # Snips part
     if intentMessage.slots.song:
         song_name = intentMessage.slots.song[0].slot_value.value.value
-        
+
         # Spotify part
         uri = _search_first(song_name, 'track')
         if uri:
@@ -346,9 +345,9 @@ def playSong(hermes, intentMessage):
                 hermes.publish_end_session(intentMessage.session_id, i18n.PLAY_SONG.format(song_name))
             except spotipy.client.SpotifyException as e:
                 _exception_spotify(e, 'playSong')
-                _simple_end(hermes, intentMessage)            
+                _simple_end(hermes, intentMessage)
     else:
-        print('No slots song found')  
+        print('No slots song found')
         _simple_end(hermes, intentMessage, text=i18n.NO_SLOT_SONG)
 
 
@@ -359,29 +358,29 @@ def playPlaylist(hermes, intentMessage):
     :param hermes: message manager of snips
     :param intentMessage: intent message incoming from snips broker
     :return: void
-    """    
+    """
     # Snips part
     if intentMessage.slots.playlist:
         playlist_name = intentMessage.slots.playlist[0].slot_value.value.value
-        
+
         pattern = '.*?{}.*?'.format(_normalize_text(playlist_name).replace(' ', '[ -_]*?'))
         print('Search playlist pattern: {}'.format(pattern))
 
         regex = re.compile(pattern, flags=re.IGNORECASE)
-        
+
         playlist_match = []
         results = _sp_client.current_user_playlists()
-        
+
         for item in results['items']:
             if regex.search(_normalize_text(item['name'])):
-                print(u'Add playlist to playlist_match: {}'.format(item['name']))
+                print('Add playlist to playlist_match: {}'.format(item['name']))
                 playlist_match.append(item)
-                
+
         playlist_match_name = [item['name'] for item in playlist_match]
         print('playlist_match: {}'.format(playlist_match_name))
         len_playlist_match = len(playlist_match)
         if len_playlist_match > 0:
-            print(u'Play the first playlist: {}'.format(playlist_match[0]['name']))
+            print('Play the first playlist: {}'.format(playlist_match[0]['name']))
             uri = playlist_match[0]['uri']
             try:
                 _sp_client.start_playback(context_uri=uri, uris=None)
@@ -415,12 +414,12 @@ def getInfos(hermes, intentMessage):
         print('getInfos track: {}, album: {}, artist: {}'.format(track, album, artists))
         # gen artist text
         a = ', '.join(artists)
-        if a.find(',') != -1:        
+        if a.find(',') != -1:
             i = a.rindex(',')
             artists_text = "{} et{}".format(a[:i], a[i + 1:])
         else:
             artists_text = a
-        print(u'artists_text: {}'.format(artists_text))
+        print('artists_text: {}'.format(artists_text))
         _simple_end(hermes, intentMessage, text=i18n.GET_INFO.format(track, artists_text, album))
     else:
         print('No track currently playing')
@@ -453,8 +452,8 @@ def modeEnable(hermes, intentMessage):
     """
     if intentMessage.slots.mode:
         mode = intentMessage.slots.mode[0].slot_value.value.value
-        
-        # Mode Shuffle        
+
+        # Mode Shuffle
         if mode == 'shuffle':
             try:
                 _sp_client.shuffle(state=True)
@@ -473,14 +472,14 @@ def modeEnable(hermes, intentMessage):
                     state = 'track'
                 else:
                     state = 'context'
-                    
+
                 _sp_client.repeat(state=state)
                 print('repeatEnable with state: {} (old state: {})'.format(state, c['repeat_state']))
             except spotipy.client.SpotifyException as e:
-                _exception_spotify(e, 'repeatEnable')            
+                _exception_spotify(e, 'repeatEnable')
         else:
             print('Unknown mode: {}'.format(mode))
-        
+
         _simple_end(hermes, intentMessage)
     else:
         print('No slots mode found')
@@ -497,7 +496,7 @@ def modeDisable(hermes, intentMessage):
 
     if intentMessage.slots.mode:
         mode = intentMessage.slots.mode[0].slot_value.value.value
-        
+
         # Mode Shuffle
         if mode == 'shuffle':
             try:
@@ -512,10 +511,10 @@ def modeDisable(hermes, intentMessage):
                 _sp_client.repeat(state='off')
                 print('repeatDisable')
             except spotipy.client.SpotifyException as e:
-                _exception_spotify(e, 'repeatEnable')            
+                _exception_spotify(e, 'repeatEnable')
         else:
             print('Unknown mode: {}'.format(mode))
-        
+
         _simple_end(hermes, intentMessage)
     else:
         print('No slots mode found')
@@ -529,10 +528,10 @@ if __name__ == "__main__":
         language = json.load(json_file)["language"]
 
     i18n = importlib.import_module("translations." + language)
-    
+
     # Defined default redirect uri
     redirect_uri = r'http://localhost/'
-    
+
     # Defined default scope
     scope = ''
     # Play music and control playback on your other devices.
@@ -545,32 +544,32 @@ if __name__ == "__main__":
     scope += ' playlist-read-private'
     # Modify your playlist and private playlist
     scope += ' playlist-modify playlist-modify-private'
-    
+
     # Default init conf
     username = None
     client_id = None
     client_secret = None
-    
+
     # Read the config
     config = read_configuration_file("./config.ini")
-    if config.get("secret") is not None:        
+    if config.get("secret") is not None:
         username = config["secret"].get("username", None)
         client_id = config["secret"].get("client_id", None)
         client_secret = config["secret"].get("client_secret", None)
         redirect_uri = config["secret"].get("redirect_uri", r'http://localhost/')
-        
+
     # Check options
     if not client_id or not client_secret:
         print("[Error] No client_id, client_secret or redirect_uri found, it's need for connection !\n\
         To get this create a APP and set allowed redirect_uri on:\n\
         https://developer.spotify.com/my-applications/#!/applications")
         exit(2)
-    
+
     # Check username
     if not username:
         print("[Error] No username found, it's need for connection !")
         exit(2)
-    
+
     token = _get_cached_token(username=username, client_id=client_id, client_secret=client_secret,
                               redirect_uri=redirect_uri, scope=scope,
                               cache_path='.cache-{}'.format(username.lower()))
@@ -579,9 +578,9 @@ if __name__ == "__main__":
     if not token:
         print("[Error] No cached token find ! Gen the token with:\npython token-generator.py")
         exit(3)
-    
+
     _sp_client = spotipy.Spotify(auth=token)
-    
+
     with Hermes(MQTT_ADDR) as h:
         h.subscribe_intent('Tealque:volumeUp', volumeUp)\
             .subscribe_intent('Tealque:volumeDown', volumeDown)\
