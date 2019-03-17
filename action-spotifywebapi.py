@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+# coding: utf8
 
 import configparser
 from hermes_python.hermes import Hermes
