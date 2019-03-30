@@ -38,6 +38,7 @@ Now you can enter on the App or on config.ini client_id, client_secret, redirect
 ### From the script on snips device
 
 - Go to the app dir (default: /var/lib/snips/skills/snips-skill-spotifywebapi/)
+- activate the virtual env with this command:`. ./venv/bin/activate`. For deactivate run command: `deactivate`
 - Run `setup.sh` (it will create a virtualenv, install the dependencies in it and rename config.ini.default to config.ini)
 - Generate token with ./token-generator.py
   - copy the URL on your browser
