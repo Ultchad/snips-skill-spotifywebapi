@@ -1,9 +1,12 @@
+# coding: utf8
 # Exception
 EXCEPTION_MSG_DICT = {
     "Player command failed: No active device found":
         "Désolé une erreur c'est produite: Aucun équipement actif n'a été trouvé",
     "The access token expired":
-        "Désolé une erreur c'est produite: le token d'acces a expiré"
+        "Désolé une erreur c'est produite: le token d'acces a expiré",
+    "Player command failed: Cannot control device volume":
+        "Désolé une erreur c'est produite: Je ne peux pas contrôler l'équipement actif "
 }
 
 DEFAULT_EXCEPTION = "Désolé une erreur c'est produite lors de cette action"

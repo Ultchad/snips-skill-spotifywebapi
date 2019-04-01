@@ -1,9 +1,12 @@
+# coding: utf8
 # Exception
 EXCEPTION_MSG_DICT = {
     "Player command failed: No active device found":
         "Sorry player command failed: No active device found",
     "The access token expired":
-        "Sorry the access token expired and the command failed"
+        "Sorry the access token expired and the command failed",
+    "Player command failed: Cannot control device volume":
+        "Sorry player command failed: Cannot control device volume"
 }
 
 DEFAULT_EXCEPTION = "Sorry command has failed for this action"
