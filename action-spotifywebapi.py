@@ -185,7 +185,7 @@ def volumeUp(hermes, intentMessage):
     :param intentMessage: intent message incoming from snips broker
     :return: void
     """
-    if intentMessage.slots.volume:
+    if intentMessage.slots and intentMessage.slots.volume:
         v_add = intentMessage.slots.volume[0].slot_value.value.value
     else:
         v_add = _volume_add
@@ -204,7 +204,7 @@ def volumeDown(hermes, intentMessage):
     :param intentMessage: intent message incoming from snips broker
     :return: void
     """
-    if intentMessage.slots.volume:
+    if intentMessage.slots and intentMessage.slots.volume:
         v_add = intentMessage.slots.volume[0].slot_value.value.value
     else:
         v_add = _volume_add
