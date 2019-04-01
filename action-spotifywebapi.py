@@ -160,18 +160,6 @@ def _search_first(query, type_search='track'):
     return item['uri']
 
 
-def _normalize_text(text):
-    """
-    Return the unicode text without accent
-    :param text: unicode text
-    :return: unicode text without accent
-    """
-    # FIXME Still necessary?
-    if isinstance(text, bytes):
-        text = text.decode('utf8')
-    return unicodedata.normalize('NFD', text).encode('ascii', 'ignore')
-
-
 ####################
 # Intent function
 ####################
@@ -364,7 +352,7 @@ def playPlaylist(hermes, intentMessage):
     if intentMessage.slots.playlist:
         playlist_name = intentMessage.slots.playlist[0].slot_value.value.value
 
-        pattern = '.*?{}.*?'.format(_normalize_text(playlist_name).replace(' ', '[ -_]*?'))
+        pattern = '.*?{}.*?'.format(playlist_name.replace(' ', '[ -_]*?'))
         print('Search playlist pattern: {}'.format(pattern))
 
         regex = re.compile(pattern, flags=re.IGNORECASE)
@@ -373,7 +361,7 @@ def playPlaylist(hermes, intentMessage):
         results = _sp_client.current_user_playlists()
 
         for item in results['items']:
-            if regex.search(_normalize_text(item['name'])):
+            if regex.search(item['name']):
                 print('Add playlist to playlist_match: {}'.format(item['name']))
                 playlist_match.append(item)
 
