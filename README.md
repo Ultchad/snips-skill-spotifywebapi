@@ -1,4 +1,4 @@
-# SpotifyWebApi french skill for Snips
+# SpotifyWebApi skill for Snips
 
 _First: Sorry for my english!_
 
