@@ -1,4 +1,4 @@
-# SpotifyWebApi french skill for Snips
+# SpotifyWebApi skill for Snips
 
 _First: Sorry for my english!_
 
@@ -20,6 +20,7 @@ The easiest way to use this Action is to install it with [Sam](https://snips.git
 - Clone the repository on your Pi
 - Run `setup.sh` (it will create a virtualenv, install the dependencies in it and rename config.ini.default to config.ini)
 - Enter information in config.ini (username, client_id, client_secret, redirect_uri)
+- activate the virtual environement with this command:`. ./venv/bin/activate`. For deactivate run command: `deactivate`
 - Generate token with ./token-generator.py
 - Run `action-spotifywebapi.py`
 
@@ -38,6 +39,7 @@ Now you can enter on the App or on config.ini client_id, client_secret, redirect
 ### From the script on snips device
 
 - Go to the app dir (default: /var/lib/snips/skills/snips-skill-spotifywebapi/)
+- activate the virtual environement with this command:`. ./venv/bin/activate`. For deactivate run command: `deactivate`
 - Run `setup.sh` (it will create a virtualenv, install the dependencies in it and rename config.ini.default to config.ini)
 - Generate token with ./token-generator.py
   - copy the URL on your browser
