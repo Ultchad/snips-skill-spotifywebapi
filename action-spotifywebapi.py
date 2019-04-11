@@ -9,6 +9,7 @@ import re
 import unicodedata
 import importlib
 import json
+import time
 
 
 MQTT_IP_ADDR = "localhost"
@@ -16,6 +17,8 @@ MQTT_PORT = 1883
 MQTT_ADDR = "{}:{}".format(MQTT_IP_ADDR, str(MQTT_PORT))
 
 
+_token_info = None
+_sp_oauth = None
 _sp_client = None
 _volume_add = 10
 
@@ -80,7 +83,31 @@ def _simple_end(hermes, intentMessage, text=''):
     EXCEPTION_MSG = None
 
 
-def _get_cached_token(username, client_id, client_secret,
+def _is_token_expired():
+        return _token_info['expires_at'] - int(time.time()) < 60
+
+
+def _regen_token():
+    global _token_info
+    global _sp_oauth
+    global _sp_client
+
+    _token_info = _sp_oauth.get_cached_token()
+
+    if _token_info:
+        print('Regen the cached token: OK')
+        _sp_client = spotipy.Spotify(auth=_token_info['access_token'])
+    else:
+        raise Exception("Error on regen token")
+
+
+def _verify_token():
+    if _is_token_expired():
+        print('token is expired: try to regen')
+        _regen_token()
+
+
+def _gen_sp_client(username, client_id, client_secret,
                       redirect_uri="http://localhost/", scope='', cache_path=None):
     """
     Return the token from cache file
@@ -90,18 +117,25 @@ def _get_cached_token(username, client_id, client_secret,
     :param redirect_uri: redirect_uri of the spotify app
     :param scope: scope need to use
     :param cache_path: path of the token file
-    :return: token
+    :return: None
     """
+
+    global _token_info
+    global _sp_oauth
+    global _sp_client
+
     if not cache_path:
         cache_path = '.cache-{}'.format(username.lower())
-    sp_oauth = oauth2.SpotifyOAuth(client_id=client_id, client_secret=client_secret,
+    _sp_oauth = oauth2.SpotifyOAuth(client_id=client_id, client_secret=client_secret,
                                    redirect_uri=redirect_uri, scope=scope, cache_path=cache_path)
-    token_info = sp_oauth.get_cached_token()
 
-    if token_info:
-        return token_info['access_token']
+    _token_info = _sp_oauth.get_cached_token()
+
+    if _token_info:
+        print('Get the cached token: OK')
+        _sp_client = spotipy.Spotify(auth=_token_info['access_token'])
     else:
-        return None
+        raise Exception("Error on gen token")
 
 
 def _get_current_volume():
@@ -109,6 +143,7 @@ def _get_current_volume():
     Call Spotify Web API to get the current volume of the main device
     :return: current volume
     """
+    _verify_token()
     try:
         r = _sp_client.current_playback()
         if r:
@@ -130,6 +165,7 @@ def _set_volume(volume_percent):
         volume_percent = 0
 
     volume_percent = int(volume_percent)
+    _verify_token()
     print('[_set_volume] set volume_percent: {}'.format(volume_percent))
     try:
         _sp_client.volume(volume_percent)
@@ -144,6 +180,7 @@ def _search_first(query, type_search='track'):
     :param type_search: artist, album, track
     :return: uri
     """
+    _verify_token()
     print('Search {}: {}'.format(type_search, query))
     try:
         results = _sp_client.search(q='{}:{}'.format(type_search, query), type=type_search, limit=1)
@@ -227,6 +264,7 @@ def previousSong(hermes, intentMessage):
     :param intentMessage: intent message incoming from snips broker
     :return: void
     """
+    _verify_token()
     _sp_client.previous_track()
     _simple_end(hermes, intentMessage)
 
@@ -238,6 +276,7 @@ def nextSong(hermes, intentMessage):
     :param intentMessage: intent message incoming from snips broker
     :return: void
     """
+    _verify_token()
     _sp_client.next_track()
     _simple_end(hermes, intentMessage)
 
@@ -249,6 +288,7 @@ def resumeMusic(hermes, intentMessage):
     :param intentMessage: intent message incoming from snips broker
     :return: void
     """
+    _verify_token()
     try:
         _sp_client.start_playback()
     except spotipy.client.SpotifyException as e:
@@ -263,6 +303,7 @@ def speakerInterrupt(hermes, intentMessage):
     :param intentMessage: intent message incoming from snips broker
     :return: void
     """
+    _verify_token()
     try:
         _sp_client.pause_playback()
     except spotipy.client.SpotifyException as e:
@@ -559,31 +600,25 @@ if __name__ == "__main__":
         print("[Error] No username found, it's need for connection !")
         exit(2)
 
-    token = _get_cached_token(username=username, client_id=client_id, client_secret=client_secret,
-                              redirect_uri=redirect_uri, scope=scope,
-                              cache_path='.cache-{}'.format(username.lower()))
-
-    print('Get the cached token: OK')
-    if not token:
-        print("[Error] No cached token find ! Gen the token with:\npython token-generator.py")
-        exit(3)
-
-    _sp_client = spotipy.Spotify(auth=token)
+    # Initialize Spotify client as global var _sp_client
+    _gen_sp_client(username=username, client_id=client_id, client_secret=client_secret,
+                   redirect_uri=redirect_uri, scope=scope,
+                   cache_path='.cache-{}'.format(username.lower()))
 
     with Hermes(MQTT_ADDR) as h:
-        h.subscribe_intent('Tealque:volumeUp', volumeUp)\
-            .subscribe_intent('Tealque:volumeDown', volumeDown)\
-            .subscribe_intent('Tealque:volumeSet', volumeSet)\
-            .subscribe_intent('previousSong', previousSong)\
-            .subscribe_intent('nextSong', nextSong)\
-            .subscribe_intent('resumeMusic', resumeMusic)\
-            .subscribe_intent('speakerInterrupt', speakerInterrupt)\
-            .subscribe_intent('Tealque:playAlbum', playAlbum)\
-            .subscribe_intent('Tealque:playArtist', playArtist)\
-            .subscribe_intent('Tealque:playSong', playSong)\
-            .subscribe_intent('Tealque:playPlaylist', playPlaylist)\
-            .subscribe_intent('getInfos', getInfos)\
-            .subscribe_intent('addSong', addSong)\
-            .subscribe_intent('Tealque:modeEnable', modeEnable)\
-            .subscribe_intent('Tealque:modeDisable', modeDisable)\
+        h.subscribe_intent('Tealque:volumeUp', volumeUp) \
+            .subscribe_intent('Tealque:volumeDown', volumeDown) \
+            .subscribe_intent('Tealque:volumeSet', volumeSet) \
+            .subscribe_intent('previousSong', previousSong) \
+            .subscribe_intent('nextSong', nextSong) \
+            .subscribe_intent('resumeMusic', resumeMusic) \
+            .subscribe_intent('speakerInterrupt', speakerInterrupt) \
+            .subscribe_intent('Tealque:playAlbum', playAlbum) \
+            .subscribe_intent('Tealque:playArtist', playArtist) \
+            .subscribe_intent('Tealque:playSong', playSong) \
+            .subscribe_intent('Tealque:playPlaylist', playPlaylist) \
+            .subscribe_intent('getInfos', getInfos) \
+            .subscribe_intent('addSong', addSong) \
+            .subscribe_intent('Tealque:modeEnable', modeEnable) \
+            .subscribe_intent('Tealque:modeDisable', modeDisable) \
             .loop_forever()
